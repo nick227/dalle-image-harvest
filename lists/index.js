@@ -57,7 +57,6 @@ module.exports.movies = require('./movies.js');
 module.exports.musicians = require('./musicians.js');
 module.exports.paper = require('./paper.js');
 module.exports.patterns = require('./patterns.js');
-module.exports.people = require('./people.js');
 module.exports.time = require('./time.js');
 module.exports.philosophers = require('./philosophers.js');
 module.exports.photography = require('./photography.js');

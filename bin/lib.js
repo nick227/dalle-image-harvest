@@ -4,14 +4,14 @@ const Stream = require('stream').Transform;
 const fs = require('fs');
 const db = require('./db');
 const { Configuration, OpenAIApi } = require("openai");
-
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
+
 module.exports.start = async function(promptObj, dir, timer, limit) {
   folderCheck(dir);
-  let isError = false; // Flag variable to track error
+  let isError = false;
   const promises = [];
   for (let i = 0; i < limit; i++) {
     promises.push(
@@ -38,7 +38,7 @@ module.exports.start = async function(promptObj, dir, timer, limit) {
         await new Promise(resolve => setTimeout(resolve, timer));
       } catch (error) {
         console.log("Error in runPromises:", error);
-        break; // Stop processing further promises
+        break;
       }
     }
     console.log("All promises resolved");
@@ -47,23 +47,6 @@ module.exports.start = async function(promptObj, dir, timer, limit) {
   await runPromises();
 };
 
-
-module.exports.shuffle = function(list) {
-  return list
-    .map(value => ({
-      value,
-      sort: Math.random()
-    }))
-    .sort((a, b) => a.sort - b.sort)
-    .map(({
-      value
-    }) => value)
-}
-
-module.exports.random = function() {
-  return this[Math.floor((Math.random() * this.length))] || '';
-}
-
 async function run(prompt, dir, timer, resolve, reject) {
   try{
   setTimeout(async function() {
@@ -71,7 +54,6 @@ async function run(prompt, dir, timer, resolve, reject) {
     console.log(prompt);
     console.log(dir);
     await generateImage(prompt, dir, resolve, reject);
-    //resolve();
   }, timer);
 
   }catch(err){
@@ -96,21 +78,6 @@ async function generateImage(prompt, dir, resolve, reject) {
     console.log('err!', error.response.data.error.message);
     reject();
   }
-}
-
-async function saveRequest(prompt, filename) {
-  return new Promise((resolve, reject) => {
-    const timestamp = new Date().toISOString();
-    db.run(`INSERT INTO requests(prompt, filename, timestamp) VALUES('${prompt}', '${filename}', '${timestamp}')`, function(err) {
-      if (err) {
-        console.log(err.message);
-        reject();
-      } else {
-        console.log(`sqlite ok`);
-        resolve();
-      }
-    });
-  });
 }
 
 async function saveImage(imageUrl, prompt, dir) {
@@ -144,6 +111,36 @@ async function saveImage(imageUrl, prompt, dir) {
   });
 }
 
+async function saveRequest(prompt, filename) {
+  return new Promise((resolve, reject) => {
+    const timestamp = new Date().toISOString();
+    db.run(`INSERT INTO requests(prompt, filename, timestamp) VALUES('${prompt}', '${filename}', '${timestamp}')`, function(err) {
+      if (err) {
+        console.log(err.message);
+        reject();
+      } else {
+        console.log(`sqlite ok`);
+        resolve();
+      }
+    });
+  });
+}
+
+function folderCheck(targetFolderName) {
+  const targetPath = targetFolderName;
+  const parts = targetPath.split('/');
+  let currentStr = '';
+  parts.forEach((folder) => {
+    currentStr = currentStr ? currentStr + '/' + folder  : folder;
+  if (!fs.existsSync(currentStr)) {
+    fs.mkdirSync(currentStr);
+    console.log(`Folder ${targetPath} created.`);
+  }else{
+    console.log(`Folder ${targetPath} exists.`);
+  }
+  });
+  return targetPath;
+}
 
 function makeFileNameSafeForWindows(name) {
   const illegalChars = /[<>:"\/\\|?*]/g;
@@ -152,18 +149,18 @@ function makeFileNameSafeForWindows(name) {
   return safeName.slice(0, maxLength);
 }
 
-function folderCheck(targetFolderName) {
-	const targetPath = targetFolderName;
-	const parts = targetPath.split('/');
-	let currentStr = '';
-	parts.forEach((folder) => {
-		currentStr = currentStr ? currentStr + '/' + folder  : folder;
-	if (!fs.existsSync(currentStr)) {
-	  fs.mkdirSync(currentStr);
-	  console.log(`Folder ${targetPath} created.`);
-	}else{
-    console.log(`Folder ${targetPath} exists.`);
-  }
-	});
-	return targetPath;
+module.exports.shuffle = function(list) {
+  return list
+    .map(value => ({
+      value,
+      sort: Math.random()
+    }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({
+      value
+    }) => value)
+}
+
+module.exports.random = function() {
+  return this[Math.floor((Math.random() * this.length))] || '';
 }

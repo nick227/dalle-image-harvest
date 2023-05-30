@@ -3,36 +3,50 @@ const https = require('https');
 const Stream = require('stream').Transform;
 const fs = require('fs');
 const db = require('./db');
-const {
-  Configuration,
-  OpenAIApi
-} = require("openai");
+const { Configuration, OpenAIApi } = require("openai");
 
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
-
-module.exports.start = async function(prompt, dir, timer, limit) {
+module.exports.start = async function(promptObj, dir, timer, limit) {
   folderCheck(dir);
+  let isError = false; // Flag variable to track error
   const promises = [];
   for (let i = 0; i < limit; i++) {
     promises.push(
       new Promise(async (resolve, reject) => {
-        await run(prompt, dir, timer * i, resolve, reject);
+        try {
+          const prompt = typeof promptObj === 'string' ? promptObj : promptObj();
+          if (!isError) {
+            await run(prompt, dir, timer * i, resolve, reject);
+          } else {
+            reject(new Error("An error occurred in a previous promise"));
+          }
+        } catch (error) {
+          isError = true;
+          console.log("Error in run:", error);
+          reject(error);
+        }
       })
     );
   }
   async function runPromises() {
     for (let i = 0; i < promises.length; i++) {
-      await promises[i];
-      await new Promise(resolve => setTimeout(resolve, timer));
+      try {
+        await promises[i];
+        await new Promise(resolve => setTimeout(resolve, timer));
+      } catch (error) {
+        console.log("Error in runPromises:", error);
+        break; // Stop processing further promises
+      }
     }
     console.log("All promises resolved");
     db.close();
   }
   await runPromises();
 };
+
 
 module.exports.shuffle = function(list) {
   return list
@@ -56,8 +70,8 @@ async function run(prompt, dir, timer, resolve, reject) {
     console.log('------');
     console.log(prompt);
     console.log(dir);
-    //await generateImage(prompt, dir, resolve, reject);
-    resolve();
+    await generateImage(prompt, dir, resolve, reject);
+    //resolve();
   }, timer);
 
   }catch(err){
@@ -79,7 +93,7 @@ async function generateImage(prompt, dir, resolve, reject) {
     resolve();
   } catch (error) {
     console.log('******');
-    console.log('err!', error.message);
+    console.log('err!', error.response.data.error.message);
     reject();
   }
 }
@@ -90,7 +104,7 @@ async function saveRequest(prompt, filename) {
     db.run(`INSERT INTO requests(prompt, filename, timestamp) VALUES('${prompt}', '${filename}', '${timestamp}')`, function(err) {
       if (err) {
         console.log(err.message);
-        resolve();
+        reject();
       } else {
         console.log(`sqlite ok`);
         resolve();
@@ -133,7 +147,7 @@ async function saveImage(imageUrl, prompt, dir) {
 
 function makeFileNameSafeForWindows(name) {
   const illegalChars = /[<>:"\/\\|?*]/g;
-  const maxLength = 190;
+  const maxLength = 100;
   const safeName = name.replace(illegalChars, '');
   return safeName.slice(0, maxLength);
 }

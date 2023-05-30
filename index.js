@@ -21,7 +21,7 @@ function prompt(){
 	return [
 		lists.adjectives.random(),
 		' fun ',
-		lists.cats.concat(dogs.shirts).random(),
+		lists.cats.concat(lists.dogs.shirts).random(),
 		mods.random()
 	].join(', ')
 }

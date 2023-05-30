@@ -1,0 +1,15 @@
+module.exports = [
+"wook", 
+"hustler",
+"disco dancer",
+"hippie", 
+"thug", 
+"hipster", 
+"gangster", 
+"bohemian", 
+"raver", 
+"showgirl", 
+"vagrant", 
+"hustler", 
+"brujo", 
+"pot head"];

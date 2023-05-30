@@ -1,0 +1,16 @@
+module.exports = [
+"glowing",
+"with a huge face",
+"growing fangs",
+"finding jesus",
+"hunting for prey",
+"shooting lazers",
+"flying away",
+"with long legs",
+"with sharp claws",
+"with a million dollars",
+"with a million cellphones",
+"with a million joints",
+"with a million laptops",
+"with glowing eyes",
+"with glowing eyes"];

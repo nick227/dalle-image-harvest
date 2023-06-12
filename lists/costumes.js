@@ -97,7 +97,7 @@ module.exports = [
 "Gothic Fairy Princess",
 "Gothic Gargoyle Queen",
 "Gothic Gargoyle",
-"Gothic Ghost Bride"
+"Gothic Ghost Bride",
 "Gothic Ghost Bride",
 "Gothic Knight",
 "Gothic Medieval Princess",

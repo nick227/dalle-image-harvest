@@ -1,83 +1,160 @@
 require('dotenv').config();
-const https = require('https');
-const Stream = require('stream').Transform;
 const fs = require('fs');
 const db = require('./db');
+const async = require("async");
+const https = require('https');
+const colors = require('colors');
+const Stream = require('stream').Transform;
 const { Configuration, OpenAIApi } = require("openai");
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
+let folderChecked = false;
 
-module.exports.start = async function(promptObj, dir, timer, limit) {
+/**
+ * start() initiates loop
+ * @param {any}    promptObj - string, array or function of prompts
+ * @param {string} dir       - target directory to save image
+ * @param {number} timer     - time to pause between promises
+ * @param {number} limit     - maximum iterations
+ * @param {number} index     - starting pointer for arrays (optional)
+ */
+
+module.exports.start = async function(promptObj, dir, timer, limit, index=null) {
+  showWelcome();
   folderCheck(dir);
-  let isError = false;
-  const promises = [];
-  for (let i = 0; i < limit; i++) {
-    promises.push(
-      new Promise(async (resolve, reject) => {
-        try {
-          const prompt = typeof promptObj === 'string' ? promptObj : promptObj();
-          if (!isError) {
-            await run(prompt, dir, timer * i, resolve, reject);
-          } else {
-            reject(new Error("An error occurred in a previous promise"));
-          }
-        } catch (error) {
-          isError = true;
-          console.log("Error in run:", error);
-          reject(error);
-        }
-      })
-    );
-  }
-  async function runPromises() {
-    for (let i = 0; i < promises.length; i++) {
-      try {
-        await promises[i];
-        await new Promise(resolve => setTimeout(resolve, timer));
-      } catch (error) {
-        console.log("Error in runPromises:", error);
-        break;
-      }
-    }
-    console.log("All promises resolved");
+  let apiError = false; 
+  const tasks = getTasks(promptObj, dir, timer, limit, index, apiError);
+  try {
+    await runTasks(tasks, timer);
+    showFinished();
+  } catch (error) {
+    console.log(colors.red(error));
+    apiError = true;
+  } finally {
+    console.log("Closing db");
     db.close();
   }
-  await runPromises();
 };
 
-async function run(prompt, dir, timer, resolve, reject) {
-  try{
-  setTimeout(async function() {
-    console.log('------');
-    console.log(prompt);
-    console.log(dir);
-    await generateImage(prompt, dir, resolve, reject);
-  }, timer);
+/*
+* Promises
+*/
 
-  }catch(err){
-    console.log("err", err)
+function getTasks(promptObj, dir, timer, limit, index, apiError){
+  const tasks = [];
+  for (let i = typeof index === 'number' ? index : 0; i < limit; i++) {
+    tasks.push(
+      function() {
+        return new Promise(async (resolve, reject) => {
+          const prompt = typeof promptObj === 'string' ? promptObj : typeof promptObj ==='function' ? promptObj() : promptObj[i];
+          if (!apiError) {
+            try {
+              await run(prompt, dir, i, timer, limit);
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          } else {
+            reject(new Error("An error occurred in a previous promise!"));
+          }
+        });
+      }
+    );
+  }
+  return tasks;
+}
+
+
+async function runTasks(tasks, timer) {
+  let resolvedTasks = 0;
+  for (const task of tasks) {
+    try {
+      await task();
+      resolvedTasks++;
+      console.log(colors.green(`resolved`));
+      console.log("--------");
+    } catch (error) {
+      console.log("Error in runTasks:", colors.red(error));
+      throw error;
+    }
   }
 }
 
-async function generateImage(prompt, dir, resolve, reject) {
+async function run(prompt, dir, counter, timer, limit) {
+  try {
+    await generateImage(prompt, dir);
+    if(counter < limit-1){
+      await pause(timer);
+    }
+  } catch (err) {
+    console.log("run err", colors.red(err));
+    throw err;
+  }
+}
+
+/*
+* Transactions
+*/
+
+async function getOpenAiImgEvent(prompt) {
+  let interval = getRequestingLog('requesting');
   try {
     const response = await openai.createImage({
       prompt: prompt,
       n: 1,
       size: "1024x1024",
     });
-    const imageUrl = response.data.data[0].url;
-    console.log('gen ok');
-    const filename = await saveImage(imageUrl, prompt, dir);
-    await saveRequest(prompt, filename);
-    resolve();
-  } catch (error) {
-    console.log('******');
-    console.log('err!', error.response.data.error.message);
-    reject();
+    clearRequestingLog(interval);
+    console.log(colors.green('request ok'));
+    if (response && response.data && response.data.data && response.data.data.length > 0) {
+      return response.data.data[0].url;
+    } else {
+    console.log(colors.red('invalid response'));
+    }
+  } catch (err) {
+    clearRequestingLog(interval);
+    console.log(colors.red('request error'));
+    throw err;
   }
+}
+
+async function saveImageEvent(imageUrl, prompt, dir){
+        interval = getRequestingLog('save image');
+        const fileName = await saveImage(imageUrl, prompt, dir);
+        clearRequestingLog(interval);
+        console.log(colors.green('image ok'));
+        return fileName;
+}
+
+async function saveRequestEvent(prompt, fileName){
+        interval = getRequestingLog('save prompt');
+        await saveRequest(prompt, fileName);
+        clearRequestingLog(interval);
+        console.log(colors.green('prompt ok'));
+        return;
+}
+
+async function generateImage(prompt, dir) {
+  return new Promise(async (resolve, reject) => {
+    try {
+        showPrompt(prompt, dir);
+        const imageUrl = await getOpenAiImgEvent(prompt);
+        const fileName = await saveImageEvent(imageUrl, prompt, dir);
+        saveRequestEvent(prompt, fileName)
+        resolve();
+    } catch (error) {
+        process.stdout.clearLine(); 
+        process.stdout.cursorTo(0);
+      if (error.response?.data?.error?.message) {
+        console.log('err 1:', colors.red(error.response.data.error.message));
+      } else if (error) {
+        console.log('err 2:', colors.red(error));
+      }
+      reject();
+    }
+  });
 }
 
 async function saveImage(imageUrl, prompt, dir) {
@@ -93,17 +170,16 @@ async function saveImage(imageUrl, prompt, dir) {
         response.on('end', function() {
           const filename = makeFileNameSafeForWindows(prompt) + '-' + Date.now();
           fs.writeFileSync(dir + '/' + filename + '.jpg', data.read());
-          console.log('save ok');
           resolve(filename);
         });
       }).end();
 
-      req.on('error', function(res) {
-        console.log('Err');
+      req.on('error', function(err) {
+        console.log('Save Image Error', colors.red(err));
         reject();
       });
     } catch (error) {
-      console.log('**********');
+      console.log('Save Image Error', colors.red(error));
       console.log(error);
       console.log('error', prompt);
       reject();
@@ -114,33 +190,98 @@ async function saveImage(imageUrl, prompt, dir) {
 async function saveRequest(prompt, filename) {
   return new Promise((resolve, reject) => {
     const timestamp = new Date().toISOString();
-    db.run(`INSERT INTO requests(prompt, filename, timestamp) VALUES('${prompt}', '${filename}', '${timestamp}')`, function(err) {
+    const statement = db.prepare('INSERT INTO requests(prompt, filename, timestamp) VALUES (?, ?, ?)');
+    statement.run(prompt, filename, timestamp, function(err) {
       if (err) {
-        console.log(err.message);
+        console.log("Save Request Error", colors.red(err.message));
         reject();
-      } else {
-        console.log(`sqlite ok`);
+      }else{
         resolve();
       }
     });
+    statement.finalize(); 
   });
 }
 
-function folderCheck(targetFolderName) {
-  const targetPath = targetFolderName;
-  const parts = targetPath.split('/');
-  let currentStr = '';
-  parts.forEach((folder) => {
-    currentStr = currentStr ? currentStr + '/' + folder  : folder;
-  if (!fs.existsSync(currentStr)) {
-    fs.mkdirSync(currentStr);
-    console.log(`Folder ${targetPath} created.`);
-  }else{
-    console.log(`Folder ${targetPath} exists.`);
-  }
-  });
-  return targetPath;
+/*
+* Helpers
+*/
+
+function pause(duration) {
+  showCounter(duration);
+  return new Promise(resolve => setTimeout(resolve, duration));
 }
+
+function showCounter(duration) {
+  let seconds = Math.floor(duration / 1000) - 5;
+  const interval = setInterval(() => {
+    if (seconds > 0) {
+      process.stdout.clearLine();
+      process.stdout.cursorTo(0); 
+      process.stdout.write(colors.yellow(`pause: ${seconds}`)); 
+      seconds--;
+    } else {
+      process.stdout.clearLine(); 
+      process.stdout.cursorTo(0); 
+      clearInterval(interval);
+    }
+  }, 1000);
+}
+
+let promptCount = 1;
+function showPrompt(prompt, dir){
+  console.log(colors.brightCyan(`prompt ${promptCount}:`));
+  console.log(prompt);
+  console.log(colors.brightCyan('directory: ' + dir));
+  promptCount++;
+}
+
+function showWelcome(prompt, dir){
+  console.clear();
+  console.log("*******************");
+  console.log("DALLE·2 Harvest 1.0");
+  console.log("*******************");
+}
+
+function showFinished(){
+    console.log("");
+    console.log("-----------------------");
+    console.log("All promises resolved");
+    console.log("-----------------------");
+    console.log("");
+}
+
+function getRequestingLog(text){
+  let count = 0;
+  return setInterval(() => {
+    process.stdout.clearLine(); 
+    process.stdout.cursorTo(0); 
+    let char = count % 2 ? "/" : "\\";
+    process.stdout.write(colors.yellow(text+" "+char)); 
+    count++;
+  }, 500);
+}
+
+function clearRequestingLog(interval){
+  process.stdout.clearLine(); 
+  process.stdout.cursorTo(0);
+  clearInterval(interval);
+}
+
+const folderCheck = (targetPath) => (
+  fs.existsSync(targetPath)
+    ? (console.log(`${targetPath} exists.`), targetPath)
+    : (
+        targetPath.split('/').reduce((currentPath, folder) => {
+          currentPath += folder;
+          fs.existsSync(currentPath)
+            ? console.log(`${currentPath} exists.`)
+            : (fs.mkdirSync(currentPath), console.log(`${currentPath} created.`));
+          return `${currentPath}/`;
+        }, ''),
+        targetPath
+      )
+);
 
 function makeFileNameSafeForWindows(name) {
   const illegalChars = /[<>:"\/\\|?*]/g;
@@ -149,6 +290,10 @@ function makeFileNameSafeForWindows(name) {
   return safeName.slice(0, maxLength);
 }
 
+/*
+* Misc
+*/
+
 module.exports.shuffle = function(list) {
   return list
     .map(value => ({
@@ -156,9 +301,7 @@ module.exports.shuffle = function(list) {
       sort: Math.random()
     }))
     .sort((a, b) => a.sort - b.sort)
-    .map(({
-      value
-    }) => value)
+    .map(({ value }) => value)
 }
 
 module.exports.random = function() {

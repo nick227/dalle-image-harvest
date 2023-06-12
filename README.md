@@ -12,6 +12,6 @@
   <li>Open index.js in your favorite code editor</li>
   <li>Construct your prompt</li>
   <li>Set output directory</li>
-  <li>Run <i>node index</i> from command line</li>
+  <li>Run <i>nodemon index</i> from command line</li>
   <li>Enjoy!</li>
   </ul>

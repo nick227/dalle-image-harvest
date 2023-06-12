@@ -7,6 +7,9 @@
 <h2>Getting Started</h2>
 <ul>
   <li>
+    Create an api key at https://platform.openai.com/account/api-keys 
+  </li>
+  <li>
   Add .env file to the bin folder with OPENAI_API_KEY="Your-API-Key-Here"
   </li>
   <li>Open index.js in your favorite code editor</li>

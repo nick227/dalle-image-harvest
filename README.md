@@ -10,7 +10,7 @@
     Create an api key at https://platform.openai.com/account/api-keys 
   </li>
   <li>
-    Clone the repo
+    Clone the repo, install dependencies
   </li>
   <li>
   Add .env file to the bin folder with OPENAI_API_KEY="Your-API-Key-Here"

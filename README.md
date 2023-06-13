@@ -1,5 +1,5 @@
 <h2>What it does</h2>
-<p>Automates dalle-2 API requests, saves the image locally, saves the query to sqlite3.</p>
+<p>Automates streaming unique Dalle-2 API requests, saves the image locally, saves the query to sqlite3.</p>
 
 <h2>Why it exists</h2>
 <p>This tool allows you to create dynamic prompts in real-time and harvest thousands of AI images.</p>

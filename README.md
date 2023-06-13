@@ -2,7 +2,7 @@
 <p>Automates combining random terms from lists into dalle-2 prompts, saves the image locally, saves the query to sqlite3. Can be throttled by speed per request and number of requests.</p>
 
 <h2>Why it exists</h2>
-<p>This tool allows you to stream dalle-2 image generation, the prompts in real-time and harvest thousands of AI images.</p>
+<p>This tool allows you to stream dalle-2 image api, modify the prompts in real-time and harvest thousands of AI images.</p>
 
 <h2>Getting Started</h2>
 <ul>

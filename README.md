@@ -16,7 +16,7 @@
   Add .env file to the bin folder with OPENAI_API_KEY="Your-API-Key-Here"
   </li>
   <li>Open index.js in your favorite code editor</li>
-  <li>Construct your prompt</li>
+  <li>Construct your prompt, examples included in the index.js</li>
   <li>Set output directory</li>
   <li>Run <i>nodemon index</i> from command line</li>
   <li>Enjoy!</li>

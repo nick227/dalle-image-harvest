@@ -1,5 +1,5 @@
 <h2>What it does</h2>
-<p>Automates combining terms from lists into dalle-2 prompts, saves the image locally, saves the query to sqlite3.</p>
+<p>Automates combining terms from lists into dynamic dalle-2 prompts, saves the image locally, saves the query to sqlite3.</p>
 
 <h2>Why it exists</h2>
 <p>This tool allows you to stream dalle-2 image api, create dynamic prompts in real-time and harvest thousands of AI images.</p>

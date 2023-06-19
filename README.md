@@ -13,7 +13,7 @@
     Clone the repo, install dependencies
   </li>
   <li>
-  Add .env file to the bin folder with OPENAI_API_KEY="Your-API-Key-Here"
+  Add .env file to the root folder with OPENAI_API_KEY="Your-API-Key-Here"
   </li>
   <li>Open index.js in your favorite code editor</li>
   <li>Set output directory</li>

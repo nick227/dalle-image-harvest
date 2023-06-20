@@ -1,7 +1,6 @@
 require('dotenv').config();
 const fs = require('fs');
 const db = require('./db');
-const async = require("async");
 const https = require('https');
 const colors = require('colors');
 const Stream = require('stream').Transform;

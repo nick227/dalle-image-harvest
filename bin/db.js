@@ -2,7 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const colors = require('colors');
 
 // open the database connection
-const db = new sqlite3.Database('./data/dalle.db', (err) => {
+const db = new sqlite3.Database('./dalle.db', (err) => {
   if (err) {
     console.error(colors.red(err.message));
   }

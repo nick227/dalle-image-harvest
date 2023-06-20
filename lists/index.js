@@ -63,7 +63,6 @@ module.exports.puns = require('./puns.js');
 module.exports.rappers = require('./rappers.js');
 module.exports.robots = require('./robots.js');
 module.exports.rockstars = require('./rockstars.js');
-module.exports.server = require('./server.js');
 module.exports.shorts = require('./shorts.js');
 module.exports.sizes = require('./sizes.js');
 module.exports.skirts = require('./skirts.js');

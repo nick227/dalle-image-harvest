@@ -2,7 +2,7 @@ const lists = require('./lists/index');
 const { random, start } = require('./bin/lib');
 Array.prototype.random = random;
 
-const targetPath = `./images/icons`;
+const targetPath = `../images/icons`;
 
 const timer = 1000 * 60 * 0.35;
 const limit = 2;
